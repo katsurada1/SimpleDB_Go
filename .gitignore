@@ -1,0 +1,5 @@
+*.exe
+*.log
+*.db
+testfile
+filetest
