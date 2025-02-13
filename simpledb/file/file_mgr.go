@@ -3,97 +3,141 @@ package file
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
 type FileMgr struct {
 	dbDirectory string
-	blocksize   int
+	blockSize   int
 	isNew       bool
 	openFiles   map[string]*os.File
-	mu          sync.Mutex
 	readCount   int
 	writeCount  int
+	mu          sync.Mutex
 }
 
-func NewFileMgr(dbDirectory string, blocksize int) *FileMgr {
-	_, err := os.Stat(dbDirectory)
-	isNew := os.IsNotExist(err)
+func NewFileMgr(dbDirectory string, blockSize int) *FileMgr {
+	isNew := false
+	if _, err := os.Stat(dbDirectory); os.IsNotExist(err) {
+		isNew = true
+		os.MkdirAll(dbDirectory, os.ModePerm)
+	}
 
-	if isNew {
-		os.Mkdir(dbDirectory, 0755)
+	files, _ := os.ReadDir(dbDirectory)
+	for _, file := range files {
+		if file.Name()[:4] == "temp" {
+			os.Remove(filepath.Join(dbDirectory, file.Name()))
+		}
 	}
 
 	return &FileMgr{
 		dbDirectory: dbDirectory,
-		blocksize:   blocksize,
+		blockSize:   blockSize,
 		isNew:       isNew,
 		openFiles:   make(map[string]*os.File),
 	}
 }
 
-func (fm *FileMgr) Read(blk *BlockID, p *Page) error {
+func (fm *FileMgr) Read(blk BlockId, p *Page) error {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	f, err := fm.getFile(blk.Filename)
+	f, err := fm.getFile(blk.FileName())
 	if err != nil {
-		return fmt.Errorf("cannot read block %v", blk)
+		return fmt.Errorf("cannot read block %v: %w", blk, err)
 	}
-	defer f.Close()
 
-	f.Seek(int64(blk.Blknum*fm.blocksize), 0)
-	_, err = f.Read(p.contents.Bytes())
+	_, err = f.Seek(int64(blk.Number()*fm.blockSize), io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	data := make([]byte, fm.blockSize)
+	_, err = f.Read(data)
+	if err != nil {
+		return err
+	}
+
+	p.SetContents(bytes.NewBuffer(data))
 	fm.readCount++
-
-	return err
+	return nil
 }
 
-func (fm *FileMgr) Write(blk *BlockID, p *Page) error {
+func (fm *FileMgr) Write(blk BlockId, p *Page) error {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	f, err := fm.getFile(blk.Filename)
+	f, err := fm.getFile(blk.FileName())
 	if err != nil {
-		return fmt.Errorf("cannot write block %v", blk)
+		return fmt.Errorf("cannot write block %v: %w", blk, err)
 	}
-	defer f.Close()
 
-	f.Seek(int64(blk.Blknum*fm.blocksize), 0)
-	_, err = f.Write(p.contents.Bytes())
+	_, err = f.Seek(int64(blk.Number()*fm.blockSize), io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(p.Contents().Bytes())
+	if err != nil {
+		return err
+	}
+
 	fm.writeCount++
-
-	return err
+	return nil
 }
 
-func (fm *FileMgr) Append(filename string) (*BlockID, error) {
+func (fm *FileMgr) Append(filename string) (BlockId, error) {
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
+
 	newBlkNum := fm.Length(filename)
-	blk := NewBlockID(filename, newBlkNum)
+	blk := NewBlockId(filename, newBlkNum)
+	emptyData := make([]byte, fm.blockSize)
 
-	b := make([]byte, fm.blocksize)
-	f, err := fm.getFile(blk.Filename)
+	f, err := fm.getFile(blk.FileName())
 	if err != nil {
-		return nil, err
+		return BlockId{}, fmt.Errorf("cannot append block %v: %w", blk, err)
 	}
-	defer f.Close()
 
-	f.Seek(int64(blk.Blknum*fm.blocksize), 0)
-	_, err = f.Write(b)
+	_, err = f.Seek(int64(blk.Number()*fm.blockSize), io.SeekStart)
+	if err != nil {
+		return BlockId{}, err
+	}
+
+	_, err = f.Write(emptyData)
+	if err != nil {
+		return BlockId{}, err
+	}
+
 	fm.writeCount++
-
-	return blk, err
+	return blk, nil
 }
 
 func (fm *FileMgr) Length(filename string) int {
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
 	f, err := fm.getFile(filename)
 	if err != nil {
 		return 0
 	}
-	defer f.Close()
 
-	info, _ := f.Stat()
-	return int(info.Size()) / fm.blocksize
+	info, err := f.Stat()
+	if err != nil {
+		return 0
+	}
+
+	return int(info.Size()) / fm.blockSize
+}
+
+func (fm *FileMgr) IsNew() bool {
+	return fm.isNew
+}
+
+func (fm *FileMgr) BlockSize() int {
+	return fm.blockSize
 }
 
 func (fm *FileMgr) getFile(filename string) (*os.File, error) {
@@ -101,25 +145,14 @@ func (fm *FileMgr) getFile(filename string) (*os.File, error) {
 		return f, nil
 	}
 
-	path := fmt.Sprintf("%s/%s", fm.dbDirectory, filename)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	filePath := filepath.Join(fm.dbDirectory, filename)
+	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err
 	}
-	fm.openFiles[filename] = f
 
+	fm.openFiles[filename] = f
 	return f, nil
 }
 
-func (fm *FileMgr) GetReadCount() int {
-	return fm.readCount
-}
 
-func (fm *FileMgr) GetWriteCount() int {
-	return fm.writeCount
-}
-
-func (fm *FileMgr) ResetStatistics() {
-	fm.readCount = 0
-	fm.writeCount = 0
-}
