@@ -1,24 +1,37 @@
 package file
 
-import "fmt"
+import (
+	"fmt"
+	"hash/fnv"
+)
 
-type BlockID struct {
-	Filename string
-	Blknum   int
+type BlockId struct {
+	filename string
+	blknum   int
 }
 
-func NewBlockID(filename string, blknum int) *BlockID {
-	return &BlockID{Filename: filename, Blknum: blknum}
+func NewBlockId(filename string, blknum int) BlockId {
+	return BlockId{filename: filename, blknum: blknum}
 }
 
-func (b *BlockID) String() string {
-	return fmt.Sprintf("[file %s, block %d]", b.Filename, b.Blknum)
+func (b BlockId) FileName() string {
+	return b.filename
 }
 
-func (b *BlockID) Equals(other *BlockID) bool {
-	return b.Filename == other.Filename && b.Blknum == other.Blknum
+func (b BlockId) Number() int {
+	return b.blknum
 }
 
-func (b *BlockID) HashCode() int {
-	return len(b.String()) // Simplified hash function
+func (b BlockId) Equals(other BlockId) bool {
+	return b.filename == other.filename && b.blknum == other.blknum
+}
+
+func (b BlockId) String() string {
+	return fmt.Sprintf("[file %s, block %d]", b.filename, b.blknum)
+}
+
+func (b BlockId) HashCode() uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(b.String()))
+	return h.Sum32()
 }
