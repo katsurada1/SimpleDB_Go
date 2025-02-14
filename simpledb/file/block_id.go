@@ -10,8 +10,8 @@ type BlockId struct {
 	blknum   int
 }
 
-func NewBlockId(filename string, blknum int) BlockId {
-	return BlockId{filename: filename, blknum: blknum}
+func NewBlockId(filename string, blknum int) *BlockId {
+	return &BlockId{filename: filename, blknum: blknum}
 }
 
 func (b BlockId) FileName() string {
