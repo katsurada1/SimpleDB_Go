@@ -19,20 +19,24 @@ type FileMgr struct {
 	mu          sync.Mutex
 }
 
+const IntSize = 4
+
 func NewFileMgr(dbDirectory string, blockSize int) *FileMgr {
 	isNew := false
 	if _, err := os.Stat(dbDirectory); os.IsNotExist(err) {
 		isNew = true
 		os.MkdirAll(dbDirectory, os.ModePerm)
 	}
+	files, err := os.ReadDir(dbDirectory)
+	if err != nil {
+			return nil
+	}
 
-	files, _ := os.ReadDir(dbDirectory)
 	for _, file := range files {
-		if file.Name()[:4] == "temp" {
+		if file.Name()[:IntSize] == "temp" {
 			os.Remove(filepath.Join(dbDirectory, file.Name()))
 		}
 	}
-
 	return &FileMgr{
 		dbDirectory: dbDirectory,
 		blockSize:   blockSize,
@@ -41,7 +45,7 @@ func NewFileMgr(dbDirectory string, blockSize int) *FileMgr {
 	}
 }
 
-func (fm *FileMgr) Read(blk BlockId, p *Page) error {
+func (fm *FileMgr) Read(blk *BlockId, p *Page) error {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
@@ -66,71 +70,70 @@ func (fm *FileMgr) Read(blk BlockId, p *Page) error {
 	return nil
 }
 
-func (fm *FileMgr) Write(blk BlockId, p *Page) error {
+func (fm *FileMgr) Write(blk *BlockId, p *Page) error {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
 	f, err := fm.getFile(blk.FileName())
 	if err != nil {
-		return fmt.Errorf("cannot write block %v: %w", blk, err)
+			return fmt.Errorf("cannot write block %v: %w", blk, err)
 	}
 
 	_, err = f.Seek(int64(blk.Number()*fm.blockSize), io.SeekStart)
 	if err != nil {
-		return err
+			return err
 	}
 
 	_, err = f.Write(p.Contents().Bytes())
 	if err != nil {
-		return err
+			return err
 	}
 
 	fm.writeCount++
 	return nil
 }
 
-func (fm *FileMgr) Append(filename string) (BlockId, error) {
+func (fm *FileMgr) Append(filename string) (*BlockId, error) {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
 	newBlkNum := fm.Length(filename)
 	blk := NewBlockId(filename, newBlkNum)
 	emptyData := make([]byte, fm.blockSize)
-
 	f, err := fm.getFile(blk.FileName())
 	if err != nil {
-		return BlockId{}, fmt.Errorf("cannot append block %v: %w", blk, err)
+			return nil, fmt.Errorf("cannot append block %v: %w", blk, err)
 	}
-
+	
 	_, err = f.Seek(int64(blk.Number()*fm.blockSize), io.SeekStart)
 	if err != nil {
-		return BlockId{}, err
+			return nil, err
 	}
 
 	_, err = f.Write(emptyData)
 	if err != nil {
-		return BlockId{}, err
+			return nil, err
 	}
-
 	fm.writeCount++
 	return blk, nil
 }
 
 func (fm *FileMgr) Length(filename string) int {
-	fm.mu.Lock()
-	defer fm.mu.Unlock()
 	f, err := fm.getFile(filename)
 	if err != nil {
-		return 0
+			return 0
 	}
 
 	info, err := f.Stat()
 	if err != nil {
-		return 0
+			return 0
 	}
 
-	return int(info.Size()) / fm.blockSize
+	filesize := int(info.Size()) / fm.blockSize
+	return filesize
 }
+
+
 
 func (fm *FileMgr) IsNew() bool {
 	return fm.isNew
@@ -142,17 +145,19 @@ func (fm *FileMgr) BlockSize() int {
 
 func (fm *FileMgr) getFile(filename string) (*os.File, error) {
 	if f, ok := fm.openFiles[filename]; ok {
-		return f, nil
+			return f, nil
 	}
 
 	filePath := filepath.Join(fm.dbDirectory, filename)
 	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
-		return nil, err
+			return nil, err
 	}
 
 	fm.openFiles[filename] = f
 	return f, nil
 }
+
+
 
 
