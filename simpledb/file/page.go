@@ -24,7 +24,7 @@ func NewPageFromBytes(b []byte) *Page {
 
 func (p *Page) GetInt(offset int) int {
 	data := p.buffer.Bytes()
-	if offset+4 > len(data) {
+	if offset+IntSize > len(data) {
 		panic(fmt.Sprintf("GetInt: offset %d out of bounds", offset))
 	}
 	return int(binary.BigEndian.Uint32(data[offset:]))
@@ -32,7 +32,7 @@ func (p *Page) GetInt(offset int) int {
 
 func (p *Page) SetInt(offset int, n int) {
 	data := p.buffer.Bytes()
-	if offset+4 > len(data) {
+	if offset+IntSize > len(data) {
 		panic(fmt.Sprintf("SetInt: offset %d out of bounds", offset))
 	}
 	binary.BigEndian.PutUint32(data[offset:], uint32(n))
@@ -40,26 +40,26 @@ func (p *Page) SetInt(offset int, n int) {
 
 func (p *Page) GetBytes(offset int) []byte {
 	data := p.buffer.Bytes()
-	if offset+4 > len(data) {
+	if offset+IntSize > len(data) {
 		panic(fmt.Sprintf("GetBytes: offset %d out of bounds", offset))
 	}
 
 	length := int(binary.BigEndian.Uint32(data[offset:]))
-	if offset+4+length > len(data) {
+	if offset+IntSize+length > len(data) {
 		panic(fmt.Sprintf("GetBytes: data out of bounds at offset %d", offset))
 	}
 
-	return data[offset+4 : offset+4+length]
+	return data[offset+IntSize : offset+IntSize+length]
 }
 
 func (p *Page) SetBytes(offset int, b []byte) {
 	data := p.buffer.Bytes()
-	if offset+4+len(b) > len(data) {
+	if offset+IntSize+len(b) > len(data) {
 		panic(fmt.Sprintf("SetBytes: offset %d out of bounds", offset))
 	}
 
 	binary.BigEndian.PutUint32(data[offset:], uint32(len(b)))
-	copy(data[offset+4:], b)
+	copy(data[offset+IntSize:], b)
 }
 
 func (p *Page) GetString(offset int) string {
@@ -71,7 +71,7 @@ func (p *Page) SetString(offset int, s string) {
 }
 
 func MaxLength(strlen int) int {
-	return 4 + strlen
+	return IntSize + strlen
 }
 
 func (p *Page) Contents() *bytes.Buffer {
