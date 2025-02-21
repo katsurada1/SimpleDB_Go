@@ -63,7 +63,7 @@ func TestLogAppend(t *testing.T) {
 
 func TestLogFlush(t *testing.T) {
 	setup()
-	createRecords(6, 10) // 6 〜 10 のログを追加
+	createRecords(6, 10) 
 	lm.Flush(8)
 	iter := lm.Iterator()
 	count := 0
@@ -80,7 +80,7 @@ func TestLogFlush(t *testing.T) {
 func createRecords(start, end int) {
 	for i := start; i <= end; i++ {
 		rec := createLogRecord(fmt.Sprintf("record%d", i), i+100)
-		lsn := lm.Append(rec)
+		_ = lm.Append(rec)
 	}
 }
 

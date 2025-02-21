@@ -41,7 +41,6 @@ func NewLogMgr(fm *file.FileMgr, logfile string) *LogMgr {
 }
 
 
-
 func (lm *LogMgr) Flush(lsn int) {
 	if lsn >= lm.lastSavedLSN {
 			lm.flush()
@@ -50,13 +49,11 @@ func (lm *LogMgr) Flush(lsn int) {
 	}
 }
 
-
 func (lm *LogMgr) Iterator() *LogIterator {
 	lm.flush()
 	iter := NewLogIterator(lm.fm, lm.currentblk)
 	return iter
 }
-
 
 func (lm *LogMgr) Append(logrec []byte) int {
 	lm.mu.Lock()
@@ -75,7 +72,6 @@ func (lm *LogMgr) Append(logrec []byte) int {
 	lm.latestLSN++
 	return lm.latestLSN
 }
-
 
 func (lm *LogMgr) flush() {
 	lm.fm.Write(lm.currentblk, lm.logpage)
