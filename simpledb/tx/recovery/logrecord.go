@@ -4,7 +4,6 @@ import (
 	"simpledb_go/simpledb/file"
 )
 
-// 定数（Java の static final int 相当）
 const (
 	CHECKPOINT = iota
 	START
@@ -14,7 +13,6 @@ const (
 	SETSTRING
 )
 
-// LogRecord インターフェース
 type LogRecord interface {
 	Op() int
 	TxNumber() int
@@ -22,7 +20,6 @@ type LogRecord interface {
 	String() string
 }
 
-// CreateLogRecord は、バイトスライスから適切な LogRecord を生成します。
 func CreateLogRecord(rec []byte) LogRecord {
 	p := file.NewPageFromBytes(rec)
 	op := p.GetInt(0)

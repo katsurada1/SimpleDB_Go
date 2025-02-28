@@ -2,12 +2,10 @@ package recovery
 
 import (
 	"fmt"
-
 	"simpledb_go/simpledb/file"
 	"simpledb_go/simpledb/log"
 )
 
-// StartRecord は START ログレコードを表します。
 type StartRecord struct {
 	txnum int
 }
@@ -28,7 +26,6 @@ func (sr *StartRecord) TxNumber() int {
 }
 
 func (sr *StartRecord) Undo(tx Tx) {
-	// 何もしない
 }
 
 func (sr *StartRecord) String() string {

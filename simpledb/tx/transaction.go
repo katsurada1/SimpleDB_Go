@@ -3,7 +3,6 @@ package tx
 import (
 	"fmt"
 	"sync"
-
 	"simpledb_go/simpledb/buffer"
 	"simpledb_go/simpledb/file"
 	"simpledb_go/simpledb/log"
@@ -11,10 +10,8 @@ import (
 	"simpledb_go/simpledb/tx/recovery"
 )
 
-// END_OF_FILE はファイル末尾を示す定数
 const END_OF_FILE = -1
 
-// Transaction はトランザクション管理を行います。
 type Transaction struct {
 	fm          *file.FileMgr
 	bm          *buffer.BufferMgr
@@ -37,7 +34,6 @@ func nextTxNumber() int {
 	return nextTxNum
 }
 
-// NewTransaction は新しいトランザクションを生成します。
 func NewTransaction(fm *file.FileMgr, lm *log.LogMgr, bm *buffer.BufferMgr) *Transaction {
 	txnum := nextTxNumber()
 	tx := &Transaction{
@@ -47,13 +43,11 @@ func NewTransaction(fm *file.FileMgr, lm *log.LogMgr, bm *buffer.BufferMgr) *Tra
 		txnum:     txnum,
 		myBuffers: NewBufferList(bm),
 	}
-	// Transaction は recovery.Tx インターフェースを実装しているので self を渡す
 	tx.recoveryMgr = recovery.NewRecoveryMgr(tx, txnum, lm, bm)
 	tx.concurMgr = concurrency.NewDefaultConcurrencyMgr()
 	return tx
 }
 
-// Commit はトランザクションをコミットします。
 func (tx *Transaction) Commit() {
 	tx.recoveryMgr.Commit()
 	fmt.Printf("transaction %d committed\n", tx.txnum)
@@ -61,7 +55,6 @@ func (tx *Transaction) Commit() {
 	tx.myBuffers.UnpinAll()
 }
 
-// Rollback はトランザクションをロールバックします。
 func (tx *Transaction) Rollback() {
 	tx.recoveryMgr.Rollback()
 	fmt.Printf("transaction %d rolled back\n", tx.txnum)
@@ -69,13 +62,10 @@ func (tx *Transaction) Rollback() {
 	tx.myBuffers.UnpinAll()
 }
 
-// Recover はシステム起動時のリカバリを実行します。
 func (tx *Transaction) Recover() {
 	tx.bm.FlushAll(tx.txnum)
 	tx.recoveryMgr.Recover()
 }
-
-// --- 以下、recovery.Tx インターフェースの実装 ---
 
 func (tx *Transaction) Pin(blk file.BlockId) {
 	tx.myBuffers.Pin(blk)
@@ -87,7 +77,6 @@ func (tx *Transaction) Unpin(blk file.BlockId) {
 func (tx *Transaction) SetInt(blk file.BlockId, offset, val int, okToLog bool) {
 	tx.concurMgr.XLock(blk)
 	buff := tx.myBuffers.GetBuffer(blk)
-	// もしバッファがピンされていなければ、ここでピンする
 	if buff == nil {
 			tx.myBuffers.Pin(blk)
 			buff = tx.myBuffers.GetBuffer(blk)
@@ -107,7 +96,6 @@ func (tx *Transaction) SetInt(blk file.BlockId, offset, val int, okToLog bool) {
 func (tx *Transaction) SetString(blk file.BlockId, offset int, val string, okToLog bool) {
 	tx.concurMgr.XLock(blk)
 	buff := tx.myBuffers.GetBuffer(blk)
-	// 同様に、バッファがピンされていなければピンする
 	if buff == nil {
 			tx.myBuffers.Pin(blk)
 			buff = tx.myBuffers.GetBuffer(blk)
@@ -126,13 +114,10 @@ func (tx *Transaction) SetString(blk file.BlockId, offset int, val string, okToL
 
 
 func (tx *Transaction) GetInt(blk file.BlockId, offset int) int {
-	// まず共有ロックを取得
 	if err := tx.concurMgr.SLock(blk); err != nil {
 			panic(err)
 	}
-	// トランザクションのバッファリストから対象ブロックを取得
 	 buff := tx.myBuffers.GetBuffer(blk)
-	// もしピンされていなければ、改めてピンする
 	if buff == nil {
 			tx.myBuffers.Pin(blk)
 			buff = tx.myBuffers.GetBuffer(blk)
@@ -159,11 +144,8 @@ func (tx *Transaction) GetString(blk file.BlockId, offset int) string {
 }
 
 
-// Size はファイルのブロック数を返します。
 func (tx *Transaction) Size(filename string) int {
-	// file.NewBlockId returns *file.BlockId; ここでは値型に変換
 	dummyBlk := file.NewBlockId(filename, END_OF_FILE)
-	// SLock は引数が値型なので、*dummyBlk を渡す
 	if err := tx.concurMgr.SLock(*dummyBlk); err != nil {
 		panic(err)
 	}
@@ -179,7 +161,6 @@ func (tx *Transaction) Append(filename string) file.BlockId {
 	if err != nil {
 			panic(err)
 	}
-	// Append 後に、このブロックをトランザクションのバッファリストにピンする
 	tx.myBuffers.Pin(*blk)
 	return *blk
 }

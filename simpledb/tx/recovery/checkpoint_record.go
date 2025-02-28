@@ -5,7 +5,6 @@ import (
 	"simpledb_go/simpledb/log"
 )
 
-// CheckpointRecord は CHECKPOINT ログレコードを表します。
 type CheckpointRecord struct{}
 
 func (cr *CheckpointRecord) Op() int {
@@ -17,14 +16,12 @@ func (cr *CheckpointRecord) TxNumber() int {
 }
 
 func (cr *CheckpointRecord) Undo(tx Tx) {
-	// CHECKPOINT には undo 情報はない
 }
 
 func (cr *CheckpointRecord) String() string {
 	return "<CHECKPOINT>"
 }
 
-// WriteCheckpointRecord は、チェックポイントレコードをログに書き込み、そのLSNを返します。
 func WriteCheckpointRecord(lm *log.LogMgr) int {
 	rec := make([]byte, 4)
 	p := file.NewPageFromBytes(rec)

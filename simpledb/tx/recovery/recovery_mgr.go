@@ -44,7 +44,7 @@ func (rm *RecoveryMgr) Recover() {
 
 func (rm *RecoveryMgr) SetInt(buff *buffer.Buffer, offset, newval int) int {
 	oldval := buff.Contents().GetInt(offset)
-	blkPtr := buff.Block() // 仮に *file.BlockId を返すとする
+	blkPtr := buff.Block() 
 	return WriteSetIntRecord(rm.lm, rm.txnum, *blkPtr, offset, oldval)
 }
 

@@ -7,7 +7,6 @@ import (
 	"simpledb_go/simpledb/log"
 )
 
-// RollbackRecord は ROLLBACK ログレコードを表します。
 type RollbackRecord struct {
 	txnum int
 }
@@ -28,7 +27,7 @@ func (rr *RollbackRecord) TxNumber() int {
 }
 
 func (rr *RollbackRecord) Undo(tx Tx) {
-	// ROLLBACK レコードは undo を行わない
+
 }
 
 func (rr *RollbackRecord) String() string {

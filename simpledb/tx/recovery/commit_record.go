@@ -7,7 +7,6 @@ import (
 	"simpledb_go/simpledb/log"
 )
 
-// CommitRecord は COMMIT ログレコードを表します。
 type CommitRecord struct {
 	txnum int
 }
@@ -28,7 +27,6 @@ func (cr *CommitRecord) TxNumber() int {
 }
 
 func (cr *CommitRecord) Undo(tx Tx) {
-	// COMMIT レコードは undo を行わない
 }
 
 func (cr *CommitRecord) String() string {

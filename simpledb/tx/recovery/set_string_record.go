@@ -2,12 +2,10 @@ package recovery
 
 import (
 	"fmt"
-
 	"simpledb_go/simpledb/file"
 	"simpledb_go/simpledb/log"
 )
 
-// SetStringRecord は SETSTRING ログレコードを表します。
 type SetStringRecord struct {
 	txnum  int
 	offset int

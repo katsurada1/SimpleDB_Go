@@ -31,10 +31,9 @@ func (bl *BufferList) GetBuffer(blk file.BlockId) *buffer.Buffer {
 func (bl *BufferList) Pin(blk file.BlockId) {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
-	// bm.Pin の引数は *file.BlockId で、戻り値は (*Buffer, error)
 	buff, err := bl.bm.Pin(&blk)
 	if err != nil {
-		panic(err) // エラー処理は必要に応じて変更してください
+		panic(err) 
 	}
 	bl.buffers[blk] = buff
 	bl.pins = append(bl.pins, blk)

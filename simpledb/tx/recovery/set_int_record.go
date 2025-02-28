@@ -7,7 +7,6 @@ import (
 	"simpledb_go/simpledb/log"
 )
 
-// SetIntRecord は SETINT ログレコードを表します。
 type SetIntRecord struct {
 	txnum  int
 	offset int

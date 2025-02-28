@@ -79,7 +79,6 @@ func TestTransactionRollback(t *testing.T) {
 	}
 }
 
-// TestTransactionRecovery は、コミットされていないトランザクションの変更がリカバリで取り消されるかをテストします。
 func TestTransactionRecovery(t *testing.T) {
 	dbDir := createTempDBDir(t)
 	defer removeTempDBDir(t, dbDir)
@@ -87,18 +86,11 @@ func TestTransactionRecovery(t *testing.T) {
 	fm := db.FileMgr()
 	lm := db.LogMgr()
 	bm := db.BufferMgr()
-
-	// コミットもロールバックもされなかったトランザクション
 	tx1 := NewTransaction(fm, lm, bm)
 	blk := tx1.Append("testfile")
 	tx1.SetInt(blk, 0, 200, true)
-	// ここでは tx1 は何もコミットせず「クラッシュ」したとみなす
-
-	// 新たなトランザクションでリカバリを実行
 	txRecovery := NewTransaction(fm, lm, bm)
 	txRecovery.Recover()
-
-	// リカバリ後、該当ブロックの値は元の値（たとえば初期値 0）になっているはず
 	val := txRecovery.GetInt(blk, 0)
 	if val != 0 {
 		t.Errorf("recovery failed: expected 0 after undo, got %d", val)
